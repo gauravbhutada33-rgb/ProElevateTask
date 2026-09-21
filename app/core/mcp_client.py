@@ -62,23 +62,25 @@ class MockSaaSMCPClient:
             "method": "tools/call",
             "params": {"name": tool_name, "arguments": arguments},
         }
-        async with limiter:
-            async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
-                response = await client.post(endpoint_url, headers=self._headers(), json=payload)
-                response.raise_for_status()
-                body: dict[str, Any] = response.json()
-                result: dict[str, Any] = body.get("result", {})
-                structured = result.get("structuredContent", {})
-                text_out = structured.get("result")
-                if text_out is None:
-                    content_list = result.get("content", [])
-                    text_out = content_list[0].get("text", "") if content_list else ""
-                return {
-                    "tool": tool_name,
-                    "is_error": bool(result.get("isError", False)),
-                    "result": text_out,
-                    "raw": result,
-                }
+        async with (
+            limiter,
+            httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client,
+        ):
+            response = await client.post(endpoint_url, headers=self._headers(), json=payload)
+            response.raise_for_status()
+            body: dict[str, Any] = response.json()
+            result: dict[str, Any] = body.get("result", {})
+            structured = result.get("structuredContent", {})
+            text_out = structured.get("result")
+            if text_out is None:
+                content_list = result.get("content", [])
+                text_out = content_list[0].get("text", "") if content_list else ""
+            return {
+                "tool": tool_name,
+                "is_error": bool(result.get("isError", False)),
+                "result": text_out,
+                "raw": result,
+            }
 
     async def call_workweek(self, tool_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
         """Invokes any of the 7 live WorkWeek MCP tools (`50 RPS` token-bucket throttled)."""
