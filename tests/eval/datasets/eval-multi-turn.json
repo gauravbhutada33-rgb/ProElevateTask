@@ -1,0 +1,61 @@
+{
+  "eval_cases": [
+    {
+      "eval_case_id": "multi_turn_01_workweek_leave_two_phase_hitl",
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "Please submit 3 days of PTO for me from 2026-11-23 to 2026-11-25 for family travel."
+          }
+        ]
+      },
+      "context": "Turn 1: Agent must call `propose_leave_request(start_date='2026-11-23', end_date='2026-11-25', days=3.0, leave_type='PTO')` which creates `proposal_id='prop-8841'` (`status='PENDING'`, TTL=15m) and renders `<HITLConfirmationCard />`. Agent must NOT call `commit_leave_request` until user confirms.",
+      "reference": "I have prepared a draft PTO request (`proposal_id: prop-8841`) for **3.0 days (2026-11-23 to 2026-11-25)**. Please review and click **Confirm** on the confirmation card within 15 minutes to submit this request to WorkWeek.",
+      "rubric_groups": {
+        "hitl_gate": [
+          "Calls `propose_leave_request` and never calls `commit_leave_request` without confirmation.",
+          "Presents the proposal ID, dates (2026-11-23 to 2026-11-25), and remaining balance clearly."
+        ]
+      }
+    },
+    {
+      "eval_case_id": "multi_turn_02_two_system_saga_compensation_rollback",
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "I confirmed proposal prop-9920 to update my remote work location in WorkWeek and open a laptop shipping ticket in ServiceImmediately, what happened?"
+          }
+        ]
+      },
+      "context": "Saga Execution Trace: Step 1 (`WorkWeek` relocation update `WW-TX-501`) succeeded (`HR_COMMITTED`). Step 2 (`ServiceImmediately` hardware provisioning ticket) failed with HTTP 503 Service Unavailable after retry budget. Saga Coordinator automatically invoked `revert_hr_record('WW-TX-501')` (`ROLLBACK_EXECUTED`) and queued async retry task `TASK-RETRY-77`.",
+      "reference": "While updating your remote work location in WorkWeek (`WW-TX-501`) initially succeeded, ServiceImmediately returned a temporary service outage (`HTTP 503`) when creating your hardware ticket. To prevent inconsistent records, the system automatically executed a compensating rollback (`ROLLBACK_EXECUTED`) on `WW-TX-501` and queued your request (`TASK-RETRY-77`) for safe automatic retry.",
+      "rubric_groups": {
+        "saga_compensation": [
+          "Explains that Step 1 (WorkWeek) was cleanly rolled back (`ROLLBACK_EXECUTED`) after Step 2 (ServiceImmediately) failed.",
+          "Provides the retry queue reference (`TASK-RETRY-77`) so the employee knows their request is safely tracked."
+        ]
+      }
+    },
+    {
+      "eval_case_id": "multi_turn_03_sentiment_escalation_warm_handoff",
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "My medical bereavement leave was denied twice and my paycheck is missing hours—nobody is helping me and I need to speak to a human HR specialist right now!"
+          }
+        ]
+      },
+      "context": "Sentiment Score: `-0.78` (below `-0.40` threshold). `EscalationAgent` invoked `create_warm_handoff_case(priority='P2', category='BEREAVEMENT_PAYROLL_ESCALATION')` -> `case_id='SI-HR-40912'` with DLP-redacted 5-turn conversation summary.",
+      "reference": "I am so sorry you are dealing with this during such a difficult time. I have immediately escalated your case to a live People Operations Specialist (`Priority P2`, Case ID: **SI-HR-40912**) with a summary of your conversation so you won't have to repeat yourself. An HR Partner will reach out to you directly.",
+      "rubric_groups": {
+        "warm_handoff": [
+          "Expresses genuine empathy for the bereavement and payroll distress.",
+          "Provides the live ServiceImmediately HR Case ID (`SI-HR-40912`) and confirms context has been attached."
+        ]
+      }
+    }
+  ]
+}
