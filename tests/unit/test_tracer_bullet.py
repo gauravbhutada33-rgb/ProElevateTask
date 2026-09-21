@@ -128,3 +128,19 @@ def test_agents_cli_eval_structure_and_schema_valid() -> None:
         assert "agent_data" in case
         assert "agents" in case["agent_data"]
         assert "turns" in case["agent_data"]
+
+
+def test_cloud_run_dockerfile_and_env_example_present() -> None:
+    """Verifies Cloud Run Dockerfile (--no-dev exclusion of tests/) and .env.example."""
+    dockerfile = pathlib.Path("Dockerfile")
+    env_example = pathlib.Path(".env.example")
+    dockerignore = pathlib.Path(".dockerignore")
+
+    assert dockerfile.is_file()
+    assert env_example.is_file()
+    assert dockerignore.is_file()
+
+    dockerfile_text = dockerfile.read_text()
+    assert "--no-dev" in dockerfile_text
+    assert "USER appuser" in dockerfile_text
+    assert "tests/" in dockerignore.read_text()
