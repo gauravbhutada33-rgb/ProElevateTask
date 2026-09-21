@@ -1,19 +1,39 @@
-"""FastAPI SSE Runtime, Two-Phase HITL Confirmation & GDPR Art. 17 Endpoint (app/fast_api_app.py)."""
+"""FastAPI SSE Runtime with Dynamic Pod Router Auto-Discovery (app/fast_api_app.py).
+
+No engineer ever needs to edit `app/fast_api_app.py`—it automatically mounts `router`
+from each pod's isolated `app/slices/pod*/router.py` module.
+"""
 
 from datetime import datetime, timezone
+import importlib
 from uuid import uuid4
 
 from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel
 
-from app.agent import root_agent, tracer_bullet_health_check
-from app.core.config import settings
+from app.agent import tracer_bullet_health_check
 
 app = FastAPI(
     title="Enterprise HR Agentic Solution (MVP 1)",
     version="1.3.0",
-    description="ADK Pattern C Supervisor + Speculative Guardrails + Two-Phase HITL Gate",
+    description="ADK Pattern C Supervisor + 5 Independent Vertical Slice Pods",
 )
+
+POD_ROUTER_MODULES = [
+    "app.slices.pod1_security_privacy.router",
+    "app.slices.pod2_policy_rag.router",
+    "app.slices.pod3_workweek_leave.router",
+    "app.slices.pod4_it_saga.router",
+    "app.slices.pod5_escalation_evals.router",
+]
+
+for _module_path in POD_ROUTER_MODULES:
+    try:
+        _mod = importlib.import_module(_module_path)
+        if hasattr(_mod, "router"):
+            app.include_router(_mod.router)
+    except ModuleNotFoundError:
+        continue
 
 
 class HITLConfirmRequest(BaseModel):

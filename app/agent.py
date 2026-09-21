@@ -1,9 +1,24 @@
-"""Root ADK Supervisor Agent (Pattern C AgentTool Orchestrator) — app/agent.py."""
+"""Root ADK Supervisor Agent with Dynamic Pod Auto-Discovery — app/agent.py.
+
+No engineer ever needs to edit `app/agent.py`—it automatically discovers `get_agent_tool()`
+from each pod's isolated `app/slices/pod*/sub_agent.py` module.
+"""
+
+import importlib
+from typing import Any
 
 from google.adk.agents import LlmAgent
 from google.adk.tools.agent_tool import AgentTool
 
 from app.core.config import settings
+
+POD_SLICE_MODULES = [
+    "app.slices.pod1_security_privacy.sub_agent",
+    "app.slices.pod2_policy_rag.sub_agent",
+    "app.slices.pod3_workweek_leave.sub_agent",
+    "app.slices.pod4_it_saga.sub_agent",
+    "app.slices.pod5_escalation_evals.sub_agent",
+]
 
 
 def tracer_bullet_health_check(employee_id: str = "EMP-1042", country_code: str = "US") -> dict[str, str]:
@@ -18,49 +33,18 @@ def tracer_bullet_health_check(employee_id: str = "EMP-1042", country_code: str 
     }
 
 
-policy_rag_specialist = LlmAgent(
-    name="policy_rag_agent",
-    model=settings.GEMINI_FLASH_MODEL,
-    description="Answers jurisdiction-specific HR policy questions with pre-retrieval entitlement filtering and inline [DOC_ID#section] citations.",
-    instruction=(
-        "You are the PolicyRAGAgent (Pod 2). Enforce synchronous <2ms pre-retrieval entitlement "
-        "checks on `country_code` and `role` prior to similarity search. Always cite exact "
-        "`[DOC_ID#section]` anchors and refuse access to restricted Executive (`EXEC`) policies."
-    ),
-)
+def _discover_pod_agent_tools() -> list[Any]:
+    """Dynamically loads `get_agent_tool()` from each pod slice without merge conflicts."""
+    tools: list[Any] = [tracer_bullet_health_check]
+    for module_path in POD_SLICE_MODULES:
+        try:
+            mod = importlib.import_module(module_path)
+            if hasattr(mod, "get_agent_tool"):
+                tools.append(mod.get_agent_tool())
+        except ModuleNotFoundError:
+            continue
+    return tools
 
-hris_action_specialist = LlmAgent(
-    name="hris_action_agent",
-    model=settings.GEMINI_FLASH_MODEL,
-    description="Reads WorkWeek PTO balances and proposes leave mutations via the Two-Phase HITL Gate (`hitl_proposals`).",
-    instruction=(
-        "You are the HRISActionAgent (Pod 3). You may read balances directly, but for any leave "
-        "submission or modification you MUST ONLY call `propose_leave_request` (creating a 15-min "
-        "TTL `proposal_id`) and pause for human confirmation via `/api/v1/hitl/confirm`."
-    ),
-)
-
-it_service_specialist = LlmAgent(
-    name="it_service_agent",
-    model=settings.GEMINI_PRO_MODEL,
-    description="Coordinates ServiceImmediately IT tickets and Two-System (WorkWeek + ServiceImmediately) Saga rollbacks.",
-    instruction=(
-        "You are the ITServiceAgent & Saga Coordinator (Pod 4). When executing a two-system "
-        "workflow across WorkWeek and ServiceImmediately, automatically trigger compensating "
-        "`revert_hr_record` / `cancel_leave_request` rollback (`ROLLBACK_EXECUTED`) if Step 2 fails."
-    ),
-)
-
-escalation_specialist = LlmAgent(
-    name="escalation_agent",
-    model=settings.GEMINI_FLASH_MODEL,
-    description="Handles distressed employee warm handoffs (sentiment < -0.4 or confidence < 0.75) by creating P2 ServiceImmediately HR cases.",
-    instruction=(
-        "You are the EscalationAgent (Pod 5). When employee sentiment is below -0.4 or policy "
-        "confidence is below 0.75, bundle a DLP-redacted 5-turn summary and open a Priority P2 "
-        "ServiceImmediately HR Case (`SI-HR-*`)."
-    ),
-)
 
 root_agent = LlmAgent(
     name="hr_supervisor_agent",
@@ -68,16 +52,10 @@ root_agent = LlmAgent(
     description="Enterprise HR Agentic Supervisor (Pattern C AgentTool Router) on Vertex AI Agent Engine.",
     instruction=(
         "You are the Enterprise HR Supervisor Agent powered by Gemini 3.6 Pro / Flash on Vertex AI "
-        "Agent Engine with Zero Data Retention (ZDR). Route policy inquiries to `policy_rag_agent`, "
-        "WorkWeek leave inquiries/proposals to `hris_action_agent`, IT/Cross-domain sagas to "
-        "`it_service_agent`, and distressed employee escalations to `escalation_agent`. "
-        "Never commit any HRIS or IT write action without an explicit human-confirmed `proposal_id`."
+        "Agent Engine with Zero Data Retention (ZDR). Route security/privacy inquiries to "
+        "`security_privacy_agent`, policy inquiries to `policy_rag_agent`, WorkWeek leave inquiries "
+        "to `hris_action_agent`, IT/Cross-domain sagas to `it_service_agent`, and distressed employee "
+        "escalations to `escalation_agent`. Never commit any write action without a human-confirmed `proposal_id`."
     ),
-    tools=[
-        tracer_bullet_health_check,
-        AgentTool(agent=policy_rag_specialist),
-        AgentTool(agent=hris_action_specialist),
-        AgentTool(agent=it_service_specialist),
-        AgentTool(agent=escalation_specialist),
-    ],
+    tools=_discover_pod_agent_tools(),
 )
