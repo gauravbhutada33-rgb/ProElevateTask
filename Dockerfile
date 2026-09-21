@@ -14,11 +14,11 @@ WORKDIR /app
 ENV UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy
 
-COPY pyproject.toml uv.lock README.md SDD.md ./
+COPY pyproject.toml README.md SDD.md ./
 COPY app ./app
 
 # Install production dependencies only (--no-dev excludes test/mock packages)
-RUN uv sync --frozen --no-dev
+RUN uv sync --no-dev
 
 FROM python:3.12-slim AS runtime
 

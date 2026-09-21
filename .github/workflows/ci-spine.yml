@@ -15,20 +15,15 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@v4
+        with:
+          python-version: "3.12"
 
       - name: Sync dependencies
         run: uv sync --extra dev
 
       - name: Gate 1 - Build-Time Exclusion of MockIdP & Relational SQLite in Production app/
         run: |
-          python3 -c "
-          import pathlib
-          for path in pathlib.Path('app').rglob('*.py'):
-              content = path.read_text()
-              assert 'mock_idp' not in content.lower(), f'Forbidden MockIdP import in {path}'
-              assert 'sqlite3' not in content.lower(), f'Forbidden relational sqlite3 import in {path}'
-          print('Guardrail Check Passed: Zero MockIdP or relational SQLite imports in app/')
-          "
+          uv run python -c "import pathlib; files = list(pathlib.Path('app').rglob('*.py')); assert all('mock_idp' not in p.read_text().lower() and 'sqlite3' not in p.read_text().lower() for p in files); print('Guardrail Check Passed: Zero MockIdP or relational SQLite imports in app/')"
 
       - name: Gate 2 - Run Unit & Spine Contract Suite
         run: uv run --extra dev pytest tests/unit/ -v

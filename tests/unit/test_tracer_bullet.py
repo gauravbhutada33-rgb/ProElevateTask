@@ -2,8 +2,8 @@
 
 import json
 import pathlib
-import yaml
 
+import yaml
 from fastapi.testclient import TestClient
 
 from app.agent import root_agent
