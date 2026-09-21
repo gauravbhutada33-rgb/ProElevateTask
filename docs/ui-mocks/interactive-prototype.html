@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Enterprise HR Agentic Assistant — Interactive UX Prototype (SDD v1.3)</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+</head>
+<body class="bg-[var(--background)] text-[var(--foreground)] antialiased select-none">
+  <div class="max-w-[1400px] mx-auto p-4 space-y-3">
+
+    <!-- Top Navigation & Progressive Disclosure Trust Bar -->
+    <header class="bg-[var(--card)] border border-[var(--border)] rounded-2xl px-5 py-3.5 flex flex-wrap items-center justify-between gap-3 shadow-sm">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-sm shadow-sm">
+          HR
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="font-semibold text-base tracking-tight">PeopleAssist AI</h1>
+            <span class="text-[11px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
+              Vertex AI ZDR Active
+            </span>
+          </div>
+          <p class="text-xs text-[var(--muted-foreground)]">
+            Connected to WorkWeek HRIS &amp; ServiceImmediately IT • Powered by Gemini 3.6 Pro / Flash
+          </p>
+        </div>
+      </div>
+
+      <!-- Scenario Switcher (Test All 5 Pods Live) -->
+      <div class="flex items-center gap-1.5 bg-[var(--background)] p-1 rounded-xl border border-[var(--border)]">
+        <button onclick="switchScenario('hitl')" id="tab-hitl" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-600 text-white transition">
+          1. Leave &amp; Policy (Pod 2 &amp; 3)
+        </button>
+        <button onclick="switchScenario('saga')" id="tab-saga" class="px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition">
+          2. Self-Healing Saga (Pod 4)
+        </button>
+        <button onclick="switchScenario('handoff')" id="tab-handoff" class="px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition">
+          3. Warm Handoff &amp; DLP (Pod 1 &amp; 5)
+        </button>
+      </div>
+
+      <!-- Progressive Disclosure Toggle: SDD Under-the-Hood Telemetry -->
+      <button onclick="toggleInspector()" id="btn-inspector" class="px-3 py-1.5 rounded-xl border border-[var(--border)] text-xs font-medium flex items-center gap-2 hover:bg-[var(--background)] transition">
+        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+        <span>SDD Trust &amp; Architecture Inspector</span>
+      </button>
+    </header>
+
+    <!-- Main 3-Zone Spatial Workspace -->
+    <div class="grid grid-cols-12 gap-4 items-start">
+
+      <!-- ZONE 1: Left Personal Context Rail (3 Cols) -->
+      <aside class="col-span-12 lg:col-span-3 space-y-3">
+        <!-- Employee Context Card (Live EMP-824 MCP Data) -->
+        <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-4 space-y-3 shadow-sm">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-xs font-medium text-[var(--muted-foreground)]">Authenticated Employee</p>
+              <h2 class="text-sm font-semibold mt-0.5">Gururay Employee</h2>
+              <p class="text-xs text-[var(--muted-foreground)]">EMP-824 • Singapore (SG) • IC</p>
+            </div>
+            <span class="px-2 py-1 rounded-lg text-[11px] font-mono bg-blue-500/10 text-blue-600 border border-blue-500/20">
+              Okta OIDC
+            </span>
+          </div>
+
+          <hr class="border-[var(--border)]" />
+
+          <!-- Visual WorkWeek Leave Balances -->
+          <div class="space-y-2.5">
+            <div class="flex items-center justify-between text-xs">
+              <span class="font-medium">WorkWeek Balances</span>
+              <span class="text-[11px] text-emerald-600 font-medium">Synced &lt;60s</span>
+            </div>
+
+            <!-- Vacation Bar -->
+            <div class="space-y-1">
+              <div class="flex justify-between text-xs">
+                <span class="text-[var(--muted-foreground)]">Annual Vacation</span>
+                <span id="sidebar-vacation-text" class="font-semibold">15.0 / 20.0 days</span>
+              </div>
+              <div class="w-full h-2 rounded-full bg-[var(--background)] overflow-hidden flex">
+                <div id="bar-vacation-rem" class="bg-emerald-600 h-full transition-all duration-500" style="width: 60%"></div>
+                <div id="bar-vacation-prop" class="bg-amber-400 h-full transition-all duration-500" style="width: 15%"></div>
+              </div>
+              <p id="sidebar-vacation-sub" class="text-[11px] text-amber-600">
+                3.0 days staged in draft proposal (12.0d after approval)
+              </p>
+            </div>
+
+            <!-- Sick Leave Bar -->
+            <div class="space-y-1 pt-1">
+              <div class="flex justify-between text-xs">
+                <span class="text-[var(--muted-foreground)]">Paid Sick Leave</span>
+                <span class="font-semibold">10.0 / 10.0 days</span>
+              </div>
+              <div class="w-full h-2 rounded-full bg-[var(--background)] overflow-hidden">
+                <div class="bg-blue-600 h-full" style="width: 100%"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live ServiceImmediately Ticket Pill -->
+        <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-4 space-y-2 shadow-sm">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-medium">Open IT Requests</span>
+            <span class="text-[11px] font-mono text-[var(--muted-foreground)]">ServiceImmediately</span>
+          </div>
+          <div class="p-2.5 rounded-xl bg-[var(--background)] border border-[var(--border)] space-y-1">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-mono font-semibold text-blue-600">INC0004773</span>
+              <span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 font-medium">New • P3</span>
+            </div>
+            <p class="text-xs text-[var(--foreground)]">Onboarding setup and badges configuration</p>
+            <p class="text-[11px] text-[var(--muted-foreground)]">Assigned: Service Desk • Singapore</p>
+          </div>
+        </div>
+
+        <!-- Calm Privacy & GDPR Art. 17 Self-Service Control (Pod 1) -->
+        <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-4 space-y-2.5 shadow-sm">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-medium">Privacy &amp; Data Control</span>
+            <span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 font-medium">GDPR Art. 17</span>
+          </div>
+          <p class="text-[11px] text-[var(--muted-foreground)] leading-relaxed">
+            Your conversation history is protected with a per-user KMS salt. You can crypto-shred your history at any time.
+          </p>
+          <button onclick="triggerGdprErase()" class="w-full py-2 px-3 rounded-xl border border-rose-500/30 text-rose-600 hover:bg-rose-500/10 text-xs font-medium transition">
+            Erase My AI History (Forget Me)
+          </button>
+          <div id="gdpr-receipt-box" class="hidden p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-[11px] space-y-1">
+            <div class="font-semibold text-emerald-700">✓ Crypto-Shredding Complete</div>
+            <div class="font-mono text-[10px]">Receipt: ERASURE-824F9A1C</div>
+            <div class="text-[10px] text-[var(--muted-foreground)]">KMS salt destroyed • 7-yr audit log preserved (0 PII)</div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- ZONE 2: Center Conversational Canvas & Structured Action Cards (6 Cols) -->
+      <main class="col-span-12 lg:col-span-6 bg-[var(--card)] border border-[var(--border)] rounded-2xl p-5 space-y-4 shadow-sm">
+
+        <!-- SCENARIO 1: Leave Request + Policy Citation (Pod 2 & Pod 3) -->
+        <div id="scenario-hitl" class="space-y-4">
+          <!-- User Turn -->
+          <div class="flex justify-end">
+            <div class="max-w-[85%] rounded-2xl rounded-tr-sm bg-emerald-600 text-white px-4 py-2.5 text-xs leading-relaxed shadow-sm">
+              Can I book 3 days of Vacation from Nov 23 to Nov 25, 2026? Also, how much notice is required under Singapore leave policy?
+            </div>
+          </div>
+
+          <!-- Assistant Response with Clickable Citation Pill -->
+          <div class="space-y-3">
+            <div class="rounded-2xl rounded-tl-sm bg-[var(--background)] border border-[var(--border)] p-4 text-xs leading-relaxed space-y-2">
+              <p>
+                Under Singapore Annual Leave guidelines, requests of 3 or more consecutive days require at least <strong>7 calendar days' advance notice</strong>
+                <button onclick="openSourceDrawer('sg-leave')" class="inline-flex items-center gap-1 px-2 py-0.5 mx-1 rounded-md bg-blue-500/10 text-blue-600 border border-blue-500/20 font-mono text-[11px] hover:bg-blue-500/20 transition">
+                  <span>DOC-SG-LEAVE-2026#sec-3.1</span>
+                  <span>↗</span>
+                </button>.
+                Since Nov 23, 2026 is more than 7 days away, you are fully eligible.
+              </p>
+              <p class="text-[var(--muted-foreground)]">
+                I’ve prepared your WorkWeek time-off request below. Nothing will be submitted until you confirm:
+              </p>
+            </div>
+
+            <!-- Redesigned Intuitive Two-Phase HITL Confirmation Card (Pod 3) -->
+            <div id="hitl-card-container" class="rounded-2xl border-2 border-amber-500/40 bg-[var(--card)] p-4 space-y-3.5 shadow-sm">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span id="hitl-badge" class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500/15 text-amber-700">
+                    Awaiting Your Confirmation • 14:52 left
+                  </span>
+                  <span class="text-[11px] font-mono text-[var(--muted-foreground)]">ID: prop-8841</span>
+                </div>
+                <span class="text-[11px] text-[var(--muted-foreground)]">WorkWeek HRIS</span>
+              </div>
+
+              <!-- Visual Summary Grid -->
+              <div class="grid grid-cols-3 gap-2.5 bg-[var(--background)] p-3 rounded-xl border border-[var(--border)] text-xs">
+                <div>
+                  <div class="text-[11px] text-[var(--muted-foreground)]">Leave Type</div>
+                  <div class="font-semibold mt-0.5">Vacation (Paid)</div>
+                </div>
+                <div>
+                  <div class="text-[11px] text-[var(--muted-foreground)]">Dates (3.0 Work Days)</div>
+                  <div class="font-semibold mt-0.5">Nov 23 – Nov 25, 2026</div>
+                </div>
+                <div>
+                  <div class="text-[11px] text-[var(--muted-foreground)]">Balance Impact</div>
+                  <div class="font-semibold mt-0.5 text-emerald-600">15.0d → 12.0d left</div>
+                </div>
+              </div>
+
+              <!-- Action Buttons -->
+              <div id="hitl-actions" class="flex items-center justify-between pt-1">
+                <span class="text-[11px] text-[var(--muted-foreground)]">
+                  🔒 Protected by Two-Phase Approval Gate (`POST /api/v1/hitl/confirm`)
+                </span>
+                <div class="flex items-center gap-2">
+                  <button onclick="resolveHitl('CANCEL')" class="px-3.5 py-2 rounded-xl border border-[var(--border)] text-xs font-medium hover:bg-[var(--background)] transition">
+                    Cancel
+                  </button>
+                  <button onclick="resolveHitl('CONFIRM')" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-sm transition">
+                    Confirm &amp; Submit to WorkWeek
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SCENARIO 2: Self-Healing Two-System Saga (Pod 4) -->
+        <div id="scenario-saga" class="hidden space-y-4">
+          <div class="flex justify-end">
+            <div class="max-w-[85%] rounded-2xl rounded-tr-sm bg-emerald-600 text-white px-4 py-2.5 text-xs leading-relaxed shadow-sm">
+              I confirmed my relocation update to 80 Pasir Panjang Rd, Singapore and my MacBook provisioning ticket. Did both go through?
+            </div>
+          </div>
+
+          <!-- Reassuring Self-Healing Saga Card (No Scary Jargon) -->
+          <div class="rounded-2xl border border-[var(--border)] bg-[var(--background)] p-4 space-y-3.5">
+            <div class="flex items-center justify-between">
+              <div>
+                <span class="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 border border-indigo-500/20">
+                  Self-Healing Protection Triggered • Zero Data Drift
+                </span>
+                <h3 class="text-sm font-semibold mt-1.5">Multi-System Relocation &amp; IT Hardware Request</h3>
+              </div>
+              <span class="text-[11px] font-mono text-[var(--muted-foreground)]">Saga #SAGA-9920</span>
+            </div>
+
+            <!-- 3-Step Visual Timeline -->
+            <div class="space-y-2.5 text-xs">
+              <div class="flex items-start gap-3 p-2.5 rounded-xl bg-[var(--card)] border border-[var(--border)]">
+                <span class="w-5 h-5 rounded-full bg-emerald-500/15 text-emerald-600 flex items-center justify-center font-bold">1</span>
+                <div>
+                  <div class="font-semibold">WorkWeek Address Update Completed (`WW-TX-501`)</div>
+                  <div class="text-[11px] text-[var(--muted-foreground)]">Temporarily recorded Singapore Office address.</div>
+                </div>
+              </div>
+
+              <div class="flex items-start gap-3 p-2.5 rounded-xl bg-[var(--card)] border border-amber-500/30">
+                <span class="w-5 h-5 rounded-full bg-amber-500/15 text-amber-600 flex items-center justify-center font-bold">2</span>
+                <div>
+                  <div class="font-semibold text-amber-700">ServiceImmediately IT Desk Temporarily Busy (`HTTP 503`)</div>
+                  <div class="text-[11px] text-[var(--muted-foreground)]">IT hardware ticketing endpoint did not respond within the retry window.</div>
+                </div>
+              </div>
+
+              <div class="flex items-start gap-3 p-2.5 rounded-xl bg-indigo-500/5 border border-indigo-500/30">
+                <span class="w-5 h-5 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold">✓</span>
+                <div>
+                  <div class="font-semibold text-indigo-700">Safely Reverted &amp; Auto-Queued (`TASK-RETRY-77`)</div>
+                  <div class="text-[11px] text-[var(--muted-foreground)]">
+                    To keep your HR and IT records 100% in sync, WorkWeek `WW-TX-501` was cleanly rolled back (`ROLLBACK_EXECUTED`) and queued in Cloud Tasks for automatic retry. <strong>No further action is needed from you.</strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SCENARIO 3: DLP Privacy Shield + Empathetic Warm Handoff (Pod 1 & Pod 5) -->
+        <div id="scenario-handoff" class="hidden space-y-4">
+          <div class="flex justify-end">
+            <div class="max-w-[85%] rounded-2xl rounded-tr-sm bg-emerald-600 text-white px-4 py-2.5 text-xs leading-relaxed shadow-sm">
+              My national ID is <span class="bg-black/25 px-1.5 py-0.5 rounded font-mono">[REDACTED_SSN]</span> and my bereavement leave was rejected twice—I need a real HR specialist right now!
+            </div>
+          </div>
+
+          <!-- Quiet Reassuring DLP Privacy Shield Pill (Pod 1) -->
+          <div class="flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-[11px] text-emerald-700">
+            <span>🛡️</span>
+            <span><strong>Privacy Guardrail (`&lt;150ms`):</strong> Your personal ID number was automatically masked as <code>[REDACTED_SSN]</code> via Cloud DLP before reaching the AI model.</span>
+          </div>
+
+          <!-- Empathetic Human Warm Handoff Card (Pod 5) -->
+          <div class="rounded-2xl border border-rose-500/30 bg-[var(--background)] p-4 space-y-3">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-full bg-rose-600 text-white flex items-center justify-center font-semibold text-xs">
+                  SC
+                </div>
+                <div>
+                  <h3 class="text-xs font-semibold">Escalated to People Operations Specialist</h3>
+                  <p class="text-[11px] text-[var(--muted-foreground)]">Priority P2 High • Response SLA: &lt; 2 Hours</p>
+                </div>
+              </div>
+              <span class="px-2.5 py-1 rounded-lg font-mono text-xs font-semibold bg-rose-500/10 text-rose-600 border border-rose-500/20">
+                Case #SI-HR-40912
+              </span>
+            </div>
+
+            <p class="text-xs text-[var(--foreground)] leading-relaxed">
+              I am so sorry for your loss and the frustration this has caused. I have opened a priority case (<strong>SI-HR-40912</strong>) and attached a privacy-redacted 5-turn summary so you won’t have to repeat anything to your People Partner.
+            </p>
+
+            <!-- 1-5 Star CSAT Micro-Survey -->
+            <div class="pt-2 border-t border-[var(--border)] flex items-center justify-between text-xs">
+              <span class="text-[var(--muted-foreground)]">Did this handoff feel helpful and clear?</span>
+              <div class="flex items-center gap-1 text-base cursor-pointer">
+                <span onclick="rateCsat(5)" id="csat-stars" class="text-amber-400">★★★★★</span>
+                <span id="csat-label" class="text-[11px] font-medium text-[var(--muted-foreground)] ml-1">(Click to rate)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </main>
+
+      <!-- ZONE 3: Right Contextual Inspector Drawer (3 Cols) -->
+      <aside class="col-span-12 lg:col-span-3 space-y-3">
+        <!-- Policy Source Citation Preview Drawer (Pod 2) -->
+        <div id="drawer-citation" class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-4 space-y-3 shadow-sm">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold">Policy Source Preview</span>
+            <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 font-medium">
+              SG / IC Entitled (&lt;2ms)
+            </span>
+          </div>
+          <div class="p-3 rounded-xl bg-[var(--background)] border border-[var(--border)] space-y-2 text-xs">
+            <div class="font-mono text-[11px] font-semibold text-blue-600">DOC-SG-LEAVE-2026#sec-3.1</div>
+            <div class="text-[11px] text-[var(--muted-foreground)]">Effective: Jan 1, 2026 • Jurisdiction: Singapore (SG)</div>
+            <p class="text-xs leading-relaxed bg-amber-500/10 border-l-2 border-amber-500 p-2 rounded">
+              "§3.1 Advance Notice: Full-time employees in Singapore (`country_code=SG`) accruals are 20.0 days/year. Requests spanning 3 or more consecutive business days require 7 calendar days' advance notice in WorkWeek."
+            </p>
+          </div>
+        </div>
+
+        <!-- Progressive Disclosure: SDD Under-the-Hood Telemetry Inspector -->
+        <div id="drawer-telemetry" class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-4 space-y-2.5 shadow-sm">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold">SDD Guardrails &amp; Rate Telemetry</span>
+            <span class="text-[10px] font-mono text-emerald-600">LIVE</span>
+          </div>
+          <div class="space-y-1.5 text-[11px] font-mono">
+            <div class="flex justify-between p-2 rounded-lg bg-[var(--background)]">
+              <span class="text-[var(--muted-foreground)]">Supervisor Model:</span>
+              <span class="font-semibold">gemini-3.6-pro</span>
+            </div>
+            <div class="flex justify-between p-2 rounded-lg bg-[var(--background)]">
+              <span class="text-[var(--muted-foreground)]">Specialist Model:</span>
+              <span class="font-semibold">gemini-3.6-flash</span>
+            </div>
+            <div class="flex justify-between p-2 rounded-lg bg-[var(--background)]">
+              <span class="text-[var(--muted-foreground)]">WorkWeek Bucket:</span>
+              <span class="text-emerald-600 font-semibold">50 RPS (100 burst)</span>
+            </div>
+            <div class="flex justify-between p-2 rounded-lg bg-[var(--background)]">
+              <span class="text-[var(--muted-foreground)]">ServiceImm Bucket:</span>
+              <span class="text-emerald-600 font-semibold">25 RPS (50 burst)</span>
+            </div>
+            <div class="flex justify-between p-2 rounded-lg bg-[var(--background)]">
+              <span class="text-[var(--muted-foreground)]">Model Armor Gate:</span>
+              <span class="text-emerald-600 font-semibold">94ms (us-central1)</span>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+    </div>
+  </div>
+
+  <script>
+    function switchScenario(mode) {
+      ['hitl', 'saga', 'handoff'].forEach(id => {
+        document.getElementById('scenario-' + id).classList.toggle('hidden', id !== mode);
+        const tab = document.getElementById('tab-' + id);
+        if (id === mode) {
+          tab.className = 'px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-600 text-white transition';
+        } else {
+          tab.className = 'px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition';
+        }
+      });
+    }
+
+    function resolveHitl(decision) {
+      const badge = document.getElementById('hitl-badge');
+      const actions = document.getElementById('hitl-actions');
+      const vacText = document.getElementById('sidebar-vacation-text');
+      const vacSub = document.getElementById('sidebar-vacation-sub');
+      const barProp = document.getElementById('bar-vacation-prop');
+
+      if (decision === 'CONFIRM') {
+        badge.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/15 text-emerald-700';
+        badge.textContent = '✓ Confirmed & Committed to WorkWeek (TX: WW-TX-8841)';
+        actions.innerHTML = '<div class="text-xs font-medium text-emerald-600">✓ Committed via POST /api/v1/hitl/confirm • WorkWeek Balance Updated (12.0 days remaining)</div>';
+        vacText.textContent = '12.0 / 20.0 days';
+        vacSub.textContent = 'Last updated just now via WorkWeek MCP';
+        vacSub.className = 'text-[11px] text-emerald-600';
+        barProp.style.width = '0%';
+      } else {
+        badge.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-rose-500/15 text-rose-700';
+        badge.textContent = '✕ Proposal Cancelled by Employee';
+        actions.innerHTML = '<div class="text-xs text-[var(--muted-foreground)]">Draft proposal discarded. Your WorkWeek balance remains untouched at 15.0 days.</div>';
+        vacSub.textContent = 'No pending proposals';
+        barProp.style.width = '0%';
+      }
+    }
+
+    function triggerGdprErase() {
+      document.getElementById('gdpr-receipt-box').classList.remove('hidden');
+    }
+
+    function toggleInspector() {
+      document.getElementById('drawer-telemetry').classList.toggle('hidden');
+    }
+
+    function openSourceDrawer() {
+      const drawer = document.getElementById('drawer-citation');
+      drawer.classList.add('ring-2', 'ring-blue-500');
+      setTimeout(() => drawer.classList.remove('ring-2', 'ring-blue-500'), 1200);
+    }
+
+    function rateCsat(score) {
+      document.getElementById('csat-label').textContent = 'Thank you! (' + score + '.0/5.0 recorded)';
+    }
+  </script>
+</body>
+</html>
