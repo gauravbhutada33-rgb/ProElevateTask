@@ -1,4 +1,4 @@
-"""FastAPI SSE Runtime, Dynamic Pod Router Auto-Discovery & HITL/GDPR Endpoints (app/fast_api_app.py)."""
+"""FastAPI SSE Runtime, Dynamic Pod Router Auto-Discovery, Live MCP Profile & HITL/GDPR Endpoints."""
 
 import importlib
 import json
@@ -14,11 +14,17 @@ from pydantic import BaseModel, Field
 from app.agent import root_agent, tracer_bullet_health_check
 from app.core.config import settings
 from app.core.contracts import EmployeeContext, get_employee_context
+from app.core.mcp_client import (
+    commit_confirmed_hitl_proposal,
+    service_immediately_list_tickets,
+    workweek_get_employee_balances,
+    workweek_get_personal_info,
+)
 
 app = FastAPI(
     title="Enterprise HR Agentic Solution (MVP 1)",
     version="1.3.0",
-    description="ADK Pattern C Supervisor + Speculative Guardrails + Two-Phase HITL Gate + 5 Independent Pods",
+    description="ADK Pattern C Supervisor + Live WorkWeek & ServiceImmediately MCP Integration",
 )
 
 POD_ROUTER_MODULES = [
@@ -63,7 +69,23 @@ def _format_sse_event(event_type: str, data: dict[str, Any]) -> str:
 @app.get("/health")
 async def health() -> dict[str, str]:
     """Wave 0 Tracer Bullet health endpoint."""
-    return tracer_bullet_health_check()
+    return tracer_bullet_health_check(employee_id=settings.DEFAULT_EMPLOYEE_ID)
+
+
+@app.get("/api/v1/mcp/profile")
+async def get_live_mcp_employee_profile(
+    ctx: EmployeeContext = Depends(get_employee_context),  # noqa: B008
+) -> dict[str, Any]:
+    """Fetches live employee balances, personal info, and tickets from WorkWeek & ServiceImmediately MCP."""
+    balances = await workweek_get_employee_balances(ctx.employee_id)
+    personal_info = await workweek_get_personal_info(ctx.employee_id)
+    tickets = await service_immediately_list_tickets(ctx.employee_id)
+    return {
+        "employee_id": ctx.employee_id,
+        "workweek_balances": balances.get("result"),
+        "workweek_personal_info": personal_info.get("result"),
+        "service_immediately_tickets": tickets.get("result"),
+    }
 
 
 @app.post("/api/v1/chat/stream")
@@ -120,13 +142,22 @@ async def chat_stream(
 async def confirm_hitl_proposal(
     payload: HITLConfirmRequest,
     x_employee_sub: str = Header(..., description="Verified Okta OIDC JWT subject claim"),
-) -> dict[str, str]:
-    """Phase 2 of the Two-Phase HITL Gate: only callable by authenticated human click."""
+) -> dict[str, Any]:
+    """Phase 2 of the Two-Phase HITL Gate: executes live MCP mutation ONLY after human click."""
     if x_employee_sub != payload.employee_id:
         raise HTTPException(status_code=403, detail="JWT subject mismatch with proposal owner.")
+    if payload.decision == "CONFIRM":
+        commit_result = await commit_confirmed_hitl_proposal(payload.proposal_id)
+        return {
+            "proposal_id": payload.proposal_id,
+            "status": "CONFIRMED",
+            "confirmed_by": x_employee_sub,
+            "mcp_execution": commit_result,
+            "confirmed_at_utc": datetime.now(UTC).isoformat(),
+        }
     return {
         "proposal_id": payload.proposal_id,
-        "status": "CONFIRMED" if payload.decision == "CONFIRM" else "REJECTED",
+        "status": "REJECTED",
         "confirmed_by": x_employee_sub,
         "confirmed_at_utc": datetime.now(UTC).isoformat(),
     }

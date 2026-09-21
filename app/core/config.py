@@ -1,10 +1,10 @@
-"""Global configuration and locked Vertex AI Agent Engine model definitions."""
+"""Global configuration and locked Vertex AI Agent Engine + Live Mock-SaaS MCP definitions."""
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    """Application settings enforcing SDD v1.3 guardrails and model tiers."""
+    """Application settings enforcing SDD v1.3 guardrails, Gemini 3.6 models, and Live MCP endpoints."""
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
@@ -13,12 +13,21 @@ class Settings(BaseSettings):
     GOOGLE_CLOUD_LOCATION: str = "us-central1"
     GOOGLE_CLOUD_FAILOVER_LOCATION: str = "us-east1"
 
-    # Latest Gemini 3.6 / 3.8 Models on Vertex AI Agent Engine
+    # Latest Gemini 3.6 Models on Vertex AI Agent Engine
     GEMINI_FLASH_MODEL: str = "gemini-3.6-flash"
     GEMINI_PRO_MODEL: str = "gemini-3.6-pro"
 
     # Maria Santos (DPO) Safeguard: Vertex AI Zero Data Retention (ZDR)
     VERTEX_AI_ZERO_DATA_RETENTION: bool = True
+
+    # Live Mock-SaaS MCP Integration (WorkWeek & ServiceImmediately)
+    MOCK_SAAS_BASE_URL: str = "https://mock-saas.aishprabhat.demo.altostrat.com"
+    WORKWEEK_MCP_URL: str = "https://mock-saas.aishprabhat.demo.altostrat.com/work-week/mcp/"
+    SERVICEIMMEDIATELY_MCP_URL: str = (
+        "https://mock-saas.aishprabhat.demo.altostrat.com/service-immediately/mcp/"
+    )
+    MCP_AUTH_TOKEN: str = "mcp_HQ2ypvFF4QHn8R-Oimw_K8gdnm-U2zhGDY25FAst55g"
+    DEFAULT_EMPLOYEE_ID: str = "EMP-824"
 
     # Alex Rivera (IT Director) Safeguard: PostgreSQL 16 Parity & Token-Bucket Rate Limits
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/hr_agentic"

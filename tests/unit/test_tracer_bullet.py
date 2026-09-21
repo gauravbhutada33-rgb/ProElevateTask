@@ -9,6 +9,11 @@ from fastapi.testclient import TestClient
 from app.agent import root_agent
 from app.core.config import settings
 from app.core.database import get_db_session
+from app.core.mcp_client import (
+    PENDING_HITL_PROPOSALS,
+    service_immediately_propose_ticket,
+    workweek_propose_time_off,
+)
 from app.core.models import Base
 from app.fast_api_app import app
 
@@ -60,7 +65,7 @@ def test_sse_chat_stream_emits_zdr_header_and_events() -> None:
     resp = client.post(
         "/api/v1/chat/stream",
         json={"message": "Check my PTO balance", "widget_hint": "hitl_card"},
-        headers={"x-employee-sub": "EMP-1042", "x-country-code": "US", "x-employee-role": "IC"},
+        headers={"x-employee-sub": "EMP-824", "x-country-code": "SG", "x-employee-role": "IC"},
     )
     assert resp.status_code == 200
     assert resp.headers["x-vertex-ai-zero-data-retention"] == "true"
@@ -74,7 +79,7 @@ def test_hitl_jwt_subject_mismatch_blocked() -> None:
     """Verifies that /api/v1/hitl/confirm blocks cross-user confirmation attempts."""
     response = client.post(
         "/api/v1/hitl/confirm",
-        json={"proposal_id": "prop-123", "employee_id": "EMP-1042", "decision": "CONFIRM"},
+        json={"proposal_id": "prop-123", "employee_id": "EMP-824", "decision": "CONFIRM"},
         headers={"x-employee-sub": "EMP-9999"},
     )
     assert response.status_code == 403
@@ -84,7 +89,7 @@ def test_gdpr_art17_forget_me_issues_erasure_receipt() -> None:
     """Verifies that DELETE /api/v1/privacy/forget-me returns a cryptographic erasure receipt."""
     response = client.delete(
         "/api/v1/privacy/forget-me",
-        headers={"x-employee-sub": "EMP-1042"},
+        headers={"x-employee-sub": "EMP-824"},
     )
     assert response.status_code == 200
     body = response.json()
@@ -144,3 +149,37 @@ def test_cloud_run_dockerfile_and_env_example_present() -> None:
     assert "--no-dev" in dockerfile_text
     assert "USER appuser" in dockerfile_text
     assert "tests/" in dockerignore.read_text()
+
+
+def test_live_mock_saas_mcp_config_and_two_phase_hitl_staging() -> None:
+    """Verifies WorkWeek & ServiceImmediately MCP URLs, EMP-824 token, and HITL staging."""
+    assert (
+        settings.WORKWEEK_MCP_URL
+        == "https://mock-saas.aishprabhat.demo.altostrat.com/work-week/mcp/"
+    )
+    assert (
+        settings.SERVICEIMMEDIATELY_MCP_URL
+        == "https://mock-saas.aishprabhat.demo.altostrat.com/service-immediately/mcp/"
+    )
+    assert settings.DEFAULT_EMPLOYEE_ID == "EMP-824"
+    assert settings.MCP_AUTH_TOKEN.startswith("mcp_")
+
+    ww_card = workweek_propose_time_off(
+        start_date="2026-11-23",
+        end_date="2026-11-25",
+        leave_type="Vacation",
+        days=3.0,
+    )
+    assert ww_card["type"] == "hitl_card"
+    assert ww_card["status"] == "PENDING"
+    assert ww_card["target_mcp"] == "WorkWeek"
+    assert ww_card["proposal_id"] in PENDING_HITL_PROPOSALS
+
+    si_card = service_immediately_propose_ticket(
+        category="Hardware",
+        short_description="MacBook Pro M4 replacement",
+        priority="3 - Moderate",
+    )
+    assert si_card["type"] == "hitl_card"
+    assert si_card["target_mcp"] == "ServiceImmediately"
+    assert si_card["proposal_id"] in PENDING_HITL_PROPOSALS
