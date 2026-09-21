@@ -1,5 +1,9 @@
 """Wave 0 Tracer Bullet & Spine Contract Verification Suite (tests/unit/test_tracer_bullet.py)."""
 
+import json
+import pathlib
+import yaml
+
 from fastapi.testclient import TestClient
 
 from app.agent import root_agent
@@ -91,3 +95,36 @@ def test_gdpr_art17_forget_me_issues_erasure_receipt() -> None:
 def test_database_session_dependency_callable() -> None:
     """Verifies that the async PostgreSQL 16 session generator is importable for Pod routers."""
     assert callable(get_db_session)
+
+
+def test_agents_cli_eval_structure_and_schema_valid() -> None:
+    """Verifies the prescribed agents-cli tests/eval/ directory and canonical dataset schemas."""
+    eval_dir = pathlib.Path("tests/eval")
+    config_file = eval_dir / "eval_config.yaml"
+    report_file = eval_dir / "evaluation_report.md"
+    single_turn_file = eval_dir / "datasets" / "eval-single-turn.json"
+    multi_turn_file = eval_dir / "datasets" / "eval-multi-turn.json"
+
+    assert config_file.is_file()
+    assert report_file.is_file()
+    assert single_turn_file.is_file()
+    assert multi_turn_file.is_file()
+
+    cfg = yaml.safe_load(config_file.read_text())
+    assert "metrics_to_run" in cfg
+    assert "custom_metrics" in cfg
+    assert all("prompt_template" in m for m in cfg["custom_metrics"])
+
+    single_data = json.loads(single_turn_file.read_text())
+    assert len(single_data["eval_cases"]) >= 4
+    for case in single_data["eval_cases"]:
+        assert "prompt" in case
+        assert "response" in case["reference"]
+        assert "response" in case["responses"][0]
+
+    multi_data = json.loads(multi_turn_file.read_text())
+    assert len(multi_data["eval_cases"]) >= 3
+    for case in multi_data["eval_cases"]:
+        assert "agent_data" in case
+        assert "agents" in case["agent_data"]
+        assert "turns" in case["agent_data"]

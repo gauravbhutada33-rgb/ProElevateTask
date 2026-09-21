@@ -2,58 +2,310 @@
   "eval_cases": [
     {
       "eval_case_id": "multi_turn_01_workweek_leave_two_phase_hitl",
-      "prompt": {
-        "role": "user",
-        "parts": [
-          {
-            "text": "Please submit 3 days of PTO for me from 2026-11-23 to 2026-11-25 for family travel."
+      "agent_data": {
+        "agents": {
+          "hr_supervisor_agent": {
+            "agent_id": "hr_supervisor_agent",
+            "agent_type": "LlmAgent",
+            "instruction": "Route WorkWeek leave requests to hris_action_agent and enforce the Two-Phase HITL Gate."
+          },
+          "hris_action_agent": {
+            "agent_id": "hris_action_agent",
+            "agent_type": "LlmAgent",
+            "instruction": "Call get_leave_balance and propose_leave_request. Never commit without human confirmation.",
+            "tools": [
+              {
+                "function_declarations": [
+                  {
+                    "name": "propose_leave_request",
+                    "description": "Creates a 15-minute TTL PENDING leave proposal in hitl_proposals and returns a proposal_id.",
+                    "parameters": {
+                      "type": "OBJECT",
+                      "properties": {
+                        "start_date": {"type": "STRING"},
+                        "end_date": {"type": "STRING"},
+                        "days": {"type": "NUMBER"},
+                        "leave_type": {"type": "STRING"}
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
           }
-        ]
-      },
-      "context": "Turn 1: Agent must call `propose_leave_request(start_date='2026-11-23', end_date='2026-11-25', days=3.0, leave_type='PTO')` which creates `proposal_id='prop-8841'` (`status='PENDING'`, TTL=15m) and renders `<HITLConfirmationCard />`. Agent must NOT call `commit_leave_request` until user confirms.",
-      "reference": "I have prepared a draft PTO request (`proposal_id: prop-8841`) for **3.0 days (2026-11-23 to 2026-11-25)**. Please review and click **Confirm** on the confirmation card within 15 minutes to submit this request to WorkWeek.",
-      "rubric_groups": {
-        "hitl_gate": [
-          "Calls `propose_leave_request` and never calls `commit_leave_request` without confirmation.",
-          "Presents the proposal ID, dates (2026-11-23 to 2026-11-25), and remaining balance clearly."
+        },
+        "turns": [
+          {
+            "turn_index": 0,
+            "events": [
+              {
+                "author": "user",
+                "content": {
+                  "role": "user",
+                  "parts": [{"text": "Please submit 3 days of PTO for me from 2026-11-23 to 2026-11-25 for family travel."}]
+                }
+              },
+              {
+                "author": "hris_action_agent",
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "function_call": {
+                        "name": "propose_leave_request",
+                        "args": {
+                          "start_date": "2026-11-23",
+                          "end_date": "2026-11-25",
+                          "days": 3.0,
+                          "leave_type": "PTO"
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "tool",
+                "content": {
+                  "role": "tool",
+                  "parts": [
+                    {
+                      "function_response": {
+                        "name": "propose_leave_request",
+                        "response": {
+                          "proposal_id": "prop-8841",
+                          "status": "PENDING",
+                          "ttl_minutes": 15,
+                          "remaining_balance_after": 11.5
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "hr_supervisor_agent",
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "text": "I have prepared a draft PTO request (`proposal_id: prop-8841`) for **3.0 days (2026-11-23 to 2026-11-25)**. Your remaining balance will be **11.5 days**. Please click **Confirm** on the confirmation card within 15 minutes to submit this request to WorkWeek."
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "turn_index": 1,
+            "events": [
+              {
+                "author": "user",
+                "content": {
+                  "role": "user",
+                  "parts": [{"text": "Confirmed proposal_id prop-8841 via HITL confirmation card."}]
+                }
+              },
+              {
+                "author": "hr_supervisor_agent",
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "text": "Your PTO request (`prop-8841`, WorkWeek Transaction `WW-TX-8841`) for **2026-11-23 to 2026-11-25** has been confirmed and committed to WorkWeek."
+                    }
+                  ]
+                }
+              }
+            ]
+          }
         ]
       }
     },
     {
       "eval_case_id": "multi_turn_02_two_system_saga_compensation_rollback",
-      "prompt": {
-        "role": "user",
-        "parts": [
-          {
-            "text": "I confirmed proposal prop-9920 to update my remote work location in WorkWeek and open a laptop shipping ticket in ServiceImmediately, what happened?"
+      "agent_data": {
+        "agents": {
+          "hr_supervisor_agent": {
+            "agent_id": "hr_supervisor_agent",
+            "agent_type": "LlmAgent",
+            "instruction": "Delegate cross-system HRIS+IT workflows to it_service_agent."
+          },
+          "it_service_agent": {
+            "agent_id": "it_service_agent",
+            "agent_type": "LlmAgent",
+            "instruction": "Execute two-system Saga across WorkWeek and ServiceImmediately with automatic rollback on failure.",
+            "tools": [
+              {
+                "function_declarations": [
+                  {
+                    "name": "execute_two_system_saga",
+                    "description": "Commits WorkWeek update then ServiceImmediately ticket; runs revert_hr_record if Step 2 fails.",
+                    "parameters": {
+                      "type": "OBJECT",
+                      "properties": {
+                        "proposal_id": {"type": "STRING"}
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
           }
-        ]
-      },
-      "context": "Saga Execution Trace: Step 1 (`WorkWeek` relocation update `WW-TX-501`) succeeded (`HR_COMMITTED`). Step 2 (`ServiceImmediately` hardware provisioning ticket) failed with HTTP 503 Service Unavailable after retry budget. Saga Coordinator automatically invoked `revert_hr_record('WW-TX-501')` (`ROLLBACK_EXECUTED`) and queued async retry task `TASK-RETRY-77`.",
-      "reference": "While updating your remote work location in WorkWeek (`WW-TX-501`) initially succeeded, ServiceImmediately returned a temporary service outage (`HTTP 503`) when creating your hardware ticket. To prevent inconsistent records, the system automatically executed a compensating rollback (`ROLLBACK_EXECUTED`) on `WW-TX-501` and queued your request (`TASK-RETRY-77`) for safe automatic retry.",
-      "rubric_groups": {
-        "saga_compensation": [
-          "Explains that Step 1 (WorkWeek) was cleanly rolled back (`ROLLBACK_EXECUTED`) after Step 2 (ServiceImmediately) failed.",
-          "Provides the retry queue reference (`TASK-RETRY-77`) so the employee knows their request is safely tracked."
+        },
+        "turns": [
+          {
+            "turn_index": 0,
+            "events": [
+              {
+                "author": "user",
+                "content": {
+                  "role": "user",
+                  "parts": [{"text": "I confirmed proposal prop-9920 to update my remote work location in WorkWeek and open a laptop shipping ticket in ServiceImmediately. What is the status?"}]
+                }
+              },
+              {
+                "author": "it_service_agent",
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "function_call": {
+                        "name": "execute_two_system_saga",
+                        "args": {"proposal_id": "prop-9920"}
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "tool",
+                "content": {
+                  "role": "tool",
+                  "parts": [
+                    {
+                      "function_response": {
+                        "name": "execute_two_system_saga",
+                        "response": {
+                          "saga_status": "ROLLBACK_EXECUTED",
+                          "step1_workweek_tx": "WW-TX-501",
+                          "step2_error": "HTTP 503 ServiceImmediately Unavailable",
+                          "compensation_action": "revert_hr_record(WW-TX-501) -> SUCCESS",
+                          "retry_queue_task_id": "TASK-RETRY-77"
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "hr_supervisor_agent",
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "text": "While updating your remote work location in WorkWeek (`WW-TX-501`) initially succeeded, ServiceImmediately returned a temporary outage (`HTTP 503`) when creating your hardware ticket. To prevent inconsistent records, the system automatically executed a compensating rollback (`ROLLBACK_EXECUTED`) on `WW-TX-501` and queued your request (`TASK-RETRY-77`) in Cloud Tasks for safe automatic retry."
+                    }
+                  ]
+                }
+              }
+            ]
+          }
         ]
       }
     },
     {
       "eval_case_id": "multi_turn_03_sentiment_escalation_warm_handoff",
-      "prompt": {
-        "role": "user",
-        "parts": [
-          {
-            "text": "My medical bereavement leave was denied twice and my paycheck is missing hours—nobody is helping me and I need to speak to a human HR specialist right now!"
+      "agent_data": {
+        "agents": {
+          "hr_supervisor_agent": {
+            "agent_id": "hr_supervisor_agent",
+            "agent_type": "LlmAgent",
+            "instruction": "Route distressed employees (sentiment < -0.4) to escalation_agent."
+          },
+          "escalation_agent": {
+            "agent_id": "escalation_agent",
+            "agent_type": "LlmAgent",
+            "instruction": "Create a Priority P2 ServiceImmediately HR case with a DLP-redacted 5-turn summary.",
+            "tools": [
+              {
+                "function_declarations": [
+                  {
+                    "name": "create_warm_handoff_case",
+                    "description": "Creates a P2 HR escalation case in ServiceImmediately with redacted transcript context.",
+                    "parameters": {
+                      "type": "OBJECT",
+                      "properties": {
+                        "priority": {"type": "STRING"},
+                        "category": {"type": "STRING"}
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
           }
-        ]
-      },
-      "context": "Sentiment Score: `-0.78` (below `-0.40` threshold). `EscalationAgent` invoked `create_warm_handoff_case(priority='P2', category='BEREAVEMENT_PAYROLL_ESCALATION')` -> `case_id='SI-HR-40912'` with DLP-redacted 5-turn conversation summary.",
-      "reference": "I am so sorry you are dealing with this during such a difficult time. I have immediately escalated your case to a live People Operations Specialist (`Priority P2`, Case ID: **SI-HR-40912**) with a summary of your conversation so you won't have to repeat yourself. An HR Partner will reach out to you directly.",
-      "rubric_groups": {
-        "warm_handoff": [
-          "Expresses genuine empathy for the bereavement and payroll distress.",
-          "Provides the live ServiceImmediately HR Case ID (`SI-HR-40912`) and confirms context has been attached."
+        },
+        "turns": [
+          {
+            "turn_index": 0,
+            "events": [
+              {
+                "author": "user",
+                "content": {
+                  "role": "user",
+                  "parts": [{"text": "My medical bereavement leave was denied twice and my paycheck is missing hours—nobody is helping me and I need to speak to a human HR specialist right now!"}]
+                }
+              },
+              {
+                "author": "escalation_agent",
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "function_call": {
+                        "name": "create_warm_handoff_case",
+                        "args": {
+                          "priority": "P2",
+                          "category": "BEREAVEMENT_PAYROLL_ESCALATION"
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "tool",
+                "content": {
+                  "role": "tool",
+                  "parts": [
+                    {
+                      "function_response": {
+                        "name": "create_warm_handoff_case",
+                        "response": {
+                          "case_id": "SI-HR-40912",
+                          "priority": "P2",
+                          "sla_hours": 2,
+                          "dlp_redacted_turns_attached": 5
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "hr_supervisor_agent",
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "text": "I am so sorry you are dealing with this during such a difficult time. I have immediately escalated your case to a live People Operations Specialist (**Priority P2**, Case ID: **SI-HR-40912**, `<2 hour` response SLA) and attached a privacy-redacted summary of our conversation so you won't have to repeat yourself."
+                    }
+                  ]
+                }
+              }
+            ]
+          }
         ]
       }
     }
