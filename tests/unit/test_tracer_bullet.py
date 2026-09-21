@@ -1,9 +1,10 @@
-"""Wave 0 Tracer Bullet Unit & Contract Verification Suite (tests/unit/test_tracer_bullet.py)."""
+"""Wave 0 Tracer Bullet & Spine Contract Verification Suite (tests/unit/test_tracer_bullet.py)."""
 
 from fastapi.testclient import TestClient
 
-from app.agent import root_agent, tracer_bullet_health_check
+from app.agent import root_agent
 from app.core.config import settings
+from app.core.database import get_db_session
 from app.core.models import Base
 from app.fast_api_app import app
 
@@ -31,6 +32,40 @@ def test_six_core_postgresql_tables_registered() -> None:
     assert expected_tables.issubset(set(Base.metadata.tables.keys()))
 
 
+def test_all_five_pod_agent_tools_auto_discovered() -> None:
+    """Verifies that root_agent auto-discovers all 5 independent pod AgentTools."""
+    assert len(root_agent.tools) == 6  # 1 tracer bullet tool + 5 pod AgentTools
+
+
+def test_all_five_pod_routers_auto_mounted() -> None:
+    """Verifies that all 5 isolated pod status routes respond independently on the Spine."""
+    for pod_slug in [
+        "pod1_security_privacy",
+        "pod2_policy_rag",
+        "pod3_workweek_leave",
+        "pod4_it_saga",
+        "pod5_escalation_evals",
+    ]:
+        resp = client.get(f"/api/v1/{pod_slug}/status")
+        assert resp.status_code == 200
+        assert resp.json() == {"pod": pod_slug, "status": "READY"}
+
+
+def test_sse_chat_stream_emits_zdr_header_and_events() -> None:
+    """Verifies that POST /api/v1/chat/stream emits typed SSE events and ZDR headers."""
+    resp = client.post(
+        "/api/v1/chat/stream",
+        json={"message": "Check my PTO balance", "widget_hint": "hitl_card"},
+        headers={"x-employee-sub": "EMP-1042", "x-country-code": "US", "x-employee-role": "IC"},
+    )
+    assert resp.status_code == 200
+    assert resp.headers["x-vertex-ai-zero-data-retention"] == "true"
+    assert "event: metadata" in resp.text
+    assert "event: token" in resp.text
+    assert "event: widget" in resp.text
+    assert "event: done" in resp.text
+
+
 def test_hitl_jwt_subject_mismatch_blocked() -> None:
     """Verifies that /api/v1/hitl/confirm blocks cross-user confirmation attempts."""
     response = client.post(
@@ -51,3 +86,8 @@ def test_gdpr_art17_forget_me_issues_erasure_receipt() -> None:
     body = response.json()
     assert body["status"] == "CRYPTO_SHREDDED"
     assert body["erasure_receipt_id"].startswith("ERASURE-")
+
+
+def test_database_session_dependency_callable() -> None:
+    """Verifies that the async PostgreSQL 16 session generator is importable for Pod routers."""
+    assert callable(get_db_session)
